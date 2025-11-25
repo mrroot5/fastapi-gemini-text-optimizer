@@ -46,6 +46,7 @@ async def transform_product(request: TransformRequest, settings: Annotated[Setti
     """
     try:
         # Transform the product using Gemini service
+        gemini_service = GeminiService()
         transformed = await gemini_service.transform_product_description(request.product)
 
         return TransformResponse(

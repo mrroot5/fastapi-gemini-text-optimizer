@@ -5,7 +5,7 @@ import json
 
 from app.config import get_settings
 from app.schemas.product import ProductInput
-from app.services.gemini_service import gemini_service
+from app.services.gemini_service import GeminiService
 
 
 async def test_transformation() -> None:
@@ -31,6 +31,7 @@ async def test_transformation() -> None:
 
     try:
         # TODO Avoid using the realmodel, mock it
+        gemini_service = GeminiService()
         transformed = await gemini_service.transform_product_description(product)
 
         print("\n✅ TRANSFORMATION SUCCESSFUL!")
