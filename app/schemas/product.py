@@ -4,17 +4,17 @@ from pydantic import BaseModel, Field
 
 
 class ProductInput(BaseModel):
-    """Input model for complex/technical product data."""
+    """Input model for complex product data."""
 
     title: str = Field(
         ...,
-        description="Technical or complex product title",
+        description="Complex product title",
         min_length=1,
         max_length=500,
     )
     description: str = Field(
         ...,
-        description="Technical or complex product description with specifications",
+        description="Complex product description",
         min_length=1,
         max_length=5000,
     )
@@ -81,12 +81,14 @@ class TransformRequest(BaseModel):
 class TransformResponse(BaseModel):
     """Response model for product transformation endpoint."""
 
-    success: bool = Field(..., description="Whether transformation was successful")
+    success: bool = Field(...,
+                          description="Whether transformation was successful")
     original: ProductInput = Field(..., description="Original product data")
     transformed: ProductOutput | None = Field(
         None, description="Transformed product data (None if failed)"
     )
-    error: str | None = Field(None, description="Error message if transformation failed")
+    error: str | None = Field(
+        None, description="Error message if transformation failed")
 
     model_config = {
         "json_schema_extra": {

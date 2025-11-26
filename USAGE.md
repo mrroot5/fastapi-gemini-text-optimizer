@@ -5,7 +5,7 @@ This guide shows you how to use the Gemini AI product transformation feature.
 ## Setup
 
 1. **Get a Gemini API Key** (Free tier available)
-   - Visit https://makersuite.google.com/app/apikey
+   - Visit https://aistudio.google.com/app/api-keys
    - Create or sign in with your Google account
    - Click "Create API Key"
    - Copy your API key
@@ -17,9 +17,13 @@ This guide shows you how to use the Gemini AI product transformation feature.
 
    # Edit .env and add your API key
    GEMINI_API_KEY=your_actual_api_key_here
+
+   GEMINI_MODEL="your_model"
    ```
 
-3. **Install Dependencies**
+3. **Configure other env variables: model, temperature, etc.**
+
+4. **Install Dependencies**
    ```bash
    poetry install
    ```
@@ -36,17 +40,15 @@ The API will be available at `http://localhost:8000`
 
 ## API Endpoints
 
-All product endpoints require authentication:
-- Query parameter: `token=jessica`
-- Header: `X-Token: fake-super-secret-token`
+All product endpoints require authentication set it in your `.env` file.
 
 ### 1. Transform Product Data
 
-**Endpoint:** `POST /products/transform?token=jessica`
+**Endpoint:** `POST /products/transform?token=your_query_token`
 
 **Headers:**
 ```
-X-Token: fake-super-secret-token
+X-Token: your_header_token
 Content-Type: application/json
 ```
 
@@ -78,13 +80,13 @@ Content-Type: application/json
 
 ### 2. Get Sample Complex Data
 
-**Endpoint:** `GET /products/sample/complex?token=jessica`
+**Endpoint:** `GET /products/sample/complex?token=your_query_token`
 
 Returns the sample technical product data for testing.
 
 ### 3. Get Sample Optimized Data
 
-**Endpoint:** `GET /products/sample/optimized?token=jessica`
+**Endpoint:** `GET /products/sample/optimized?token=your_query_token`
 
 Returns an example of optimized marketing copy.
 
@@ -92,12 +94,12 @@ Returns an example of optimized marketing copy.
 
 ```bash
 # Get sample complex data
-curl -X GET "http://localhost:8000/products/sample/complex?token=jessica" \
-  -H "X-Token: fake-super-secret-token"
+curl -X GET "http://localhost:8000/products/sample/complex?token=your_query_token" \
+  -H "X-Token: your_header_token"
 
 # Transform product data
-curl -X POST "http://localhost:8000/products/transform?token=jessica" \
-  -H "X-Token: fake-super-secret-token" \
+curl -X POST "http://localhost:8000/products/transform?token=your_query_token" \
+  -H "X-Token: your_header_token" \
   -H "Content-Type: application/json" \
   -d '{
     "product": {
@@ -107,7 +109,7 @@ curl -X POST "http://localhost:8000/products/transform?token=jessica" \
   }'
 ```
 
-## Testing with Python Script
+## Testing
 
 Run the included test script:
 
@@ -125,18 +127,6 @@ FastAPI provides automatic interactive documentation:
 - **ReDoc:** http://localhost:8000/redoc
 
 You can test all endpoints directly from these interfaces!
-
-## Configuration
-
-Customize Gemini AI behavior in your `.env` file:
-
-```env
-# Gemini Configuration
-GEMINI_API_KEY=your_api_key_here
-GEMINI_MODEL=gemini-2.0-flash-exp          # Model to use
-GEMINI_TEMPERATURE=0.7                      # Creativity level (0.0-1.0)
-GEMINI_MAX_TOKENS=2048                      # Maximum output length
-```
 
 ## Architecture
 
@@ -158,20 +148,6 @@ ValueError: GEMINI_API_KEY is not set. Please configure it in your .env file.
 
 **Solution:** Make sure you've created a `.env` file with your Gemini API key.
 
-### Authentication Errors (401/403)
-
-**Solution:** Include both required authentication tokens:
-- Query param: `token=jessica`
-- Header: `X-Token: fake-super-secret-token`
-
 ### Rate Limits
 
 Gemini free tier has rate limits. If you hit them, wait a moment and try again.
-
-## Next Steps
-
-1. Replace the demo authentication tokens with real authentication
-2. Add rate limiting and caching
-3. Implement batch transformation endpoints
-4. Add more transformation types (SEO optimization, social media, etc.)
-5. Create comprehensive tests in `tests/` directory

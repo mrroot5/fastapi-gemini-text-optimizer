@@ -10,11 +10,6 @@ app = FastAPI(dependencies=[Depends(get_query_token)])
 app.include_router(products.router)
 
 
-@app.get("/")
-async def root():
-    return {"message": "Hello Bigger Applications!"}
-
-
 @app.get("/health")
 async def health_check() -> JSONResponse:
     """Health check endpoint for monitoring."""
