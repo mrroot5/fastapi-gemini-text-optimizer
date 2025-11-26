@@ -2,6 +2,7 @@
 
 import json
 import logging
+from typing import NoReturn
 
 from google import genai
 from google.genai import errors
@@ -123,7 +124,7 @@ Return ONLY a valid JSON object with this exact structure (no markdown, no code 
 
 Respond with JSON only:"""
 
-    def _manage_gemini_api_errors(self, error: errors.APIError) -> None:
+    def _manage_gemini_api_errors(self, error: errors.APIError) -> NoReturn:
         if error.code == 429:
             raise ValueError("Rate limit exceeded")
         elif error.code == 503:
