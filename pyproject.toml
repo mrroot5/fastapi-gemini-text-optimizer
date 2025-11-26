@@ -14,11 +14,11 @@ pydantic = "^2.9.0"
 pydantic-settings = "^2.6.0"
 httpx = "^0.28.1"
 google-genai = "^1.52.0"
+ruff = "^0.14.6"
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^8.3.0"
 pytest-asyncio = "^0.24.0"
-ruff = "^0.7.0"
 mypy = "^1.13.0"
 
 [tool.ruff]
@@ -26,7 +26,7 @@ format.quote-style = "double"
 format.indent-style = "space"
 line-length = 100
 target-version = "py311"
-select = [
+lint.select = [
     "E",  # pycodestyle errors
     "W",  # pycodestyle warnings
     "F",  # pyflakes
@@ -35,7 +35,7 @@ select = [
     "C4", # flake8-comprehensions
     "UP", # pyupgrade
 ]
-ignore = [
+lint.ignore = [
     "E501", # line too long (handled by black)
 ]
 
