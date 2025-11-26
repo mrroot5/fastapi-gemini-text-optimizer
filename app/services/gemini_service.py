@@ -65,14 +65,11 @@ class GeminiService:
                                      response.text)
 
                     if not response.text:
-                        try:
-                            candidate: genai.types.Candidate = getattr(
-                                response, "candidate", [])[0]
+                        candidate: genai.types.Candidate = getattr(
+                            response, "candidates", [])[0]
 
-                            self.logger.exception(
-                                "Gemini no text: %s", candidate.finish_reason)
-                        except IndexError:
-                            pass
+                        self.logger.error(
+                            "Gemini no text: %s", candidate.finish_reason)
 
                         raise ValueError("Empty response")
 
@@ -84,6 +81,7 @@ class GeminiService:
 
         except json.JSONDecodeError as e:
             self.logger.error("Failed to parse response as JSON")
+
             raise ValueError(
                 f"Failed to parse Gemini response as JSON: {e}") from e
         except errors.APIError as e:
