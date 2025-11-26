@@ -1,6 +1,8 @@
 """Product transformation endpoints using Gemini AI."""
 
+
 import json
+import logging
 from pathlib import Path
 from typing import Annotated
 
@@ -8,7 +10,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 
 from app.dependencies import get_token_header
 from app.schemas.product import ProductInput, TransformRequest, TransformResponse
-from app.services.gemini_service import gemini_service
+from app.services.gemini_service import GeminiService
 
 from ..config import Settings, get_settings
 
@@ -25,11 +27,11 @@ router = APIRouter(
     response_model=TransformResponse,
     status_code=status.HTTP_200_OK,
     summary="Transform product data using Gemini AI",
-    description="Converts technical/complex product information into consumer-friendly marketing copy using Google Gemini AI.",
+    description="Converts complex product information into consumer-friendly marketing copy using Google Gemini AI.",
 )
 async def transform_product(request: TransformRequest, settings: Annotated[Settings, Depends(get_settings)]) -> TransformResponse:
     """
-    Transform technical product data into engaging marketing copy.
+    Transform complex product data into engaging marketing copy.
 
     This endpoint takes complex product information (technical specs, jargon)
     and uses Gemini AI to transform it into consumer-friendly, benefit-focused
@@ -59,7 +61,6 @@ async def transform_product(request: TransformRequest, settings: Annotated[Setti
         )
 
     except ValueError as e:
-        # Configuration or parsing errors
         return TransformResponse(
             success=False,
             original=request.product,
@@ -99,7 +100,8 @@ async def get_sample_complex() -> ProductInput:
         HTTPException: If sample file cannot be loaded
     """
     try:
-        data_path = Path(__file__).parent.parent / "data" / "sample-complex-data.json"
+        data_path = Path(__file__).parent.parent / \
+            "data" / "sample-complex-data.json"
 
         with open(data_path, encoding="utf-8") as f:
             data = json.load(f)
@@ -139,7 +141,8 @@ async def get_sample_optimized() -> ProductInput:
         HTTPException: If sample file cannot be loaded
     """
     try:
-        data_path = Path(__file__).parent.parent / "data" / "sample-optimized-data.json"
+        data_path = Path(__file__).parent.parent / "data" / \
+            "sample-optimized-data.json"
 
         with open(data_path, encoding="utf-8") as f:
             data = json.load(f)
