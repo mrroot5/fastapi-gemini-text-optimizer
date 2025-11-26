@@ -1,13 +1,19 @@
 """Service for interacting with Google Gemini AI API."""
 
 import json
-from typing import Any
+import logging
 
-import google.generativeai as genai  # type: ignore[import-untyped]
-from google.generativeai.types import GenerationConfig  # type: ignore[import-untyped]
+from google import genai
+from google.genai import errors
+from pydantic import BaseModel
 
-from app.config import settings
+from app.config import get_settings
 from app.schemas.product import ProductInput, ProductOutput
+
+
+class GeminiResponse(BaseModel):
+    title: str
+    description: str
 
 
 class GeminiService:
@@ -15,17 +21,15 @@ class GeminiService:
 
     def __init__(self) -> None:
         """Initialize the Gemini service with API configuration."""
-        if not settings.gemini_api_key:
-            raise ValueError("GEMINI_API_KEY is not set. Please configure it in your .env file.")
+        self.settings = get_settings()
+        self.logger = logging.getLogger(__name__)
 
-        genai.configure(api_key=settings.gemini_api_key)
-        self.model = genai.GenerativeModel(
-            model_name=settings.gemini_model,
-            generation_config=GenerationConfig(
-                temperature=settings.gemini_temperature,
-                max_output_tokens=settings.gemini_max_tokens,
-            ),
-        )
+        self.logger.debug(
+            "Initialized GeminiService with model=%s", self.settings.gemini_model)
+
+        if not self.settings.gemini_api_key:
+            raise ValueError(
+                "GEMINI_API_KEY is not set. Please configure it in your .env file.")
 
     async def transform_product_description(self, product: ProductInput) -> ProductOutput:
         """
@@ -44,22 +48,47 @@ class GeminiService:
         prompt = self._build_transformation_prompt(product)
 
         try:
-            # Generate content using Gemini
-            response = await self.model.generate_content_async(prompt)
+            async with genai.Client(api_key=self.settings.gemini_api_key).aio as aclient:
+                response = await aclient.models.generate_content(
+                    model=self.settings.gemini_model,
+                    contents=prompt,
+                    config=genai.types.GenerateContentConfig(
+                        temperature=self.settings.gemini_temperature,
+                        max_output_tokens=self.settings.gemini_max_tokens,
+                        response_mime_type="application/json",
+                        response_schema=GeminiResponse
+                    ),
+                )
 
-            if not response.text:
-                raise ValueError("Gemini API returned empty response")
+                if response:
+                    self.logger.info("Gemini raw response: %s",
+                                     response.text)
 
-            # Parse the JSON response
-            transformed_data = self._parse_response(response.text)
+                    if not response.text:
+                        candidate: genai.types.Candidate = getattr(
+                            response, "candidates", [])[0]
 
-            # Validate and return as ProductOutput
-            return ProductOutput(**transformed_data)
+                        self.logger.error(
+                            "Gemini no text: %s", candidate.finish_reason)
+
+                        raise ValueError("Empty response")
+
+                    transformed_data = json.loads(response.text)
+
+                    return ProductOutput(**transformed_data)
+                else:
+                    raise ValueError("No response")
 
         except json.JSONDecodeError as e:
-            raise ValueError(f"Failed to parse Gemini response as JSON: {e}") from e
-        except Exception as e:
-            raise Exception(f"Gemini API error: {e}") from e
+            self.logger.error("Failed to parse response as JSON")
+
+            raise ValueError(
+                f"Failed to parse Gemini response as JSON: {e}") from e
+        except errors.APIError as e:
+            self.logger.error(
+                "Gemini API error during content generation: %s", e)
+
+            self._manage_gemini_api_errors(e)
 
     def _build_transformation_prompt(self, product: ProductInput) -> str:
         """
@@ -94,45 +123,10 @@ Return ONLY a valid JSON object with this exact structure (no markdown, no code 
 
 Respond with JSON only:"""
 
-    def _parse_response(self, response_text: str) -> dict[str, Any]:
-        """
-        Parse and clean the Gemini API response.
+    def _manage_gemini_api_errors(self, error: errors.APIError) -> None:
+        if error.code == 429:
+            raise ValueError("Rate limit exceeded")
+        elif error.code == 503:
+            raise ValueError(error.message)
 
-        Args:
-            response_text: Raw response text from Gemini
-
-        Returns:
-            Parsed dictionary with title and description
-
-        Raises:
-            json.JSONDecodeError: If response is not valid JSON
-        """
-        # Clean up the response (remove markdown code blocks if present)
-        cleaned_text = response_text.strip()
-
-        print("cleaned_text")
-        print(cleaned_text)
-
-        # Remove markdown code blocks if present
-        if cleaned_text.startswith("```json"):
-            cleaned_text = cleaned_text[7:]  # Remove ```json
-        elif cleaned_text.startswith("```"):
-            cleaned_text = cleaned_text[3:]  # Remove ```
-
-        if cleaned_text.endswith("```"):
-            cleaned_text = cleaned_text[:-3]  # Remove trailing ```
-
-        cleaned_text = cleaned_text.strip()
-
-        # Parse JSON
-        data = json.loads(cleaned_text)
-
-        # Validate required fields
-        if "title" not in data or "description" not in data:
-            raise ValueError("Response missing required fields: title or description")
-
-        return data
-
-
-# Global service instance
-gemini_service = GeminiService()
+        raise Exception(f"Gemini API error: {error}") from error

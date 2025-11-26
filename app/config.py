@@ -1,5 +1,6 @@
 """Application configuration using Pydantic Settings."""
 
+import logging
 from functools import lru_cache
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -24,13 +25,34 @@ class Settings(BaseSettings):
     # Application Configuration
     environment: str = ""
     debug: bool = True
+    # Logging
+    log_level: str = ""
 
-    # Authentication Tokens (for demo purposes)
+    # Authentication Tokens
     query_token: str = ""
     header_token: str = ""
 
 
-# Global settings instance
 @lru_cache
 def get_settings() -> Settings:
-    return Settings()
+    settings = Settings()
+
+    _configure_root_logging(settings)
+
+    return settings
+
+
+def _configure_root_logging(settings: Settings) -> None:
+    try:
+        level = getattr(logging, settings.log_level.upper(), logging.INFO)
+    except Exception:
+        level = logging.INFO
+
+    logging.basicConfig(
+        level=level,
+        format="%(asctime)s %(levelname)s %(name)s: %(message)s",
+    )
+
+    logging.getLogger().setLevel(level)
+
+    return None

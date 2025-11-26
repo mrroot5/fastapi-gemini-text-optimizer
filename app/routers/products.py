@@ -10,7 +10,7 @@ from app.dependencies import get_token_header
 from app.schemas.product import ProductInput, TransformRequest, TransformResponse
 from app.services.gemini_service import gemini_service
 
-from ..config import Settings
+from ..config import Settings, get_settings
 
 router = APIRouter(
     prefix="/products",
@@ -44,12 +44,12 @@ async def transform_product(request: TransformRequest, settings: Annotated[Setti
     Raises:
         HTTPException: If transformation fails
     """
+    logger = logging.getLogger(__name__)
+
     try:
         # Transform the product using Gemini service
+        gemini_service = GeminiService()
         transformed = await gemini_service.transform_product_description(request.product)
-
-        print("transformed")
-        print(transformed)
 
         return TransformResponse(
             success=True,
@@ -68,12 +68,13 @@ async def transform_product(request: TransformRequest, settings: Annotated[Setti
         )
 
     except Exception as e:
-        # Other unexpected errors
+        logger.error(f"Unexpected error: {str(e)}")
+
         return TransformResponse(
             success=False,
             original=request.product,
             transformed=None,
-            error=f"Unexpected error: {str(e)}",
+            error="Unexpected error",
         )
 
 
