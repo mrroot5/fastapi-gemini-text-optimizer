@@ -1,14 +1,15 @@
 """Product transformation endpoints using Gemini AI."""
 
 import json
+import logging
 from pathlib import Path
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, status
+from services import GeminiService
 
 from app.dependencies import get_token_header
 from app.schemas.product import ProductInput, TransformRequest, TransformResponse
-from app.services.gemini_service import gemini_service
 
 from ..config import Settings, get_settings
 
