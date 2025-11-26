@@ -15,6 +15,7 @@ pydantic-settings = "^2.6.0"
 httpx = "^0.28.1"
 google-genai = "^1.52.0"
 ruff = "^0.14.6"
+annotated-types = "^0.7.0"
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^8.3.0"
