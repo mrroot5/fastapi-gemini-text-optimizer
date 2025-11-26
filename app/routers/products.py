@@ -7,11 +7,10 @@ from pathlib import Path
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, status
-from services import GeminiService
 
 from app.dependencies import get_token_header
 from app.schemas.product import ProductInput, TransformRequest, TransformResponse
-from app.services.gemini_service import GeminiService
+from app.services import GeminiService
 
 from ..config import Settings, get_settings
 
