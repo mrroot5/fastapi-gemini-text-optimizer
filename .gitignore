@@ -135,3 +135,6 @@ dmypy.json
 
 # Alembic
 alembic/versions/*.pyc
+
+# AIs
+.claude
