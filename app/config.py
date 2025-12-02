@@ -22,9 +22,6 @@ class Settings(BaseSettings):
     gemini_temperature: float = 0.0
     gemini_max_tokens: int = 0
 
-    # Application Configuration
-    environment: str = ""
-    debug: bool = True
     # Logging
     log_level: str = ""
 
