@@ -138,3 +138,6 @@ alembic/versions/*.pyc
 
 # AIs
 .claude
+
+.mypy_cache
+.ruff_cache
