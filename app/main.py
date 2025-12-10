@@ -5,7 +5,7 @@ from fastapi.responses import JSONResponse
 from .dependencies import get_query_token
 from .routers import products
 
-app = FastAPI(dependencies=[Depends(get_query_token)])
+app = FastAPI()
 
 
 app.include_router(products.router)

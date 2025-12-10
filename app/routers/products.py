@@ -8,8 +8,9 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, status
 
-from app.dependencies import get_token_header
-from app.schemas.product import ProductInput, TransformRequest, TransformResponse
+from app.dependencies import get_query_token, get_token_header
+from app.schemas.product import (ProductInput, TransformRequest,
+                                 TransformResponse)
 from app.services import GeminiService
 
 from ..config import Settings, get_settings
@@ -17,7 +18,7 @@ from ..config import Settings, get_settings
 router = APIRouter(
     prefix="/products",
     tags=["products"],
-    dependencies=[Depends(get_token_header)],
+    dependencies=[Depends(get_token_header), Depends(get_query_token)],
     responses={404: {"description": "Not found"}},
 )
 
