@@ -12,6 +12,7 @@ from app.dependencies import get_query_token, get_token_header
 from app.schemas.product import (ProductInput, TransformRequest,
                                  TransformResponse)
 from app.services import GeminiService
+from app.services.gemini_service import get_gemini_service
 
 from ..config import Settings, get_settings
 
@@ -30,7 +31,11 @@ router = APIRouter(
     summary="Transform product data using Gemini AI",
     description="Converts complex product information into consumer-friendly marketing copy using Google Gemini AI.",
 )
-async def transform_product(request: TransformRequest, settings: Annotated[Settings, Depends(get_settings)]) -> TransformResponse:
+async def transform_product(
+    request: TransformRequest,
+    settings: Annotated[Settings, Depends(get_settings)],
+    gemini_service: GeminiService = Depends(get_gemini_service),
+) -> TransformResponse:
     """
     Transform complex product data into engaging marketing copy.
 
@@ -50,8 +55,7 @@ async def transform_product(request: TransformRequest, settings: Annotated[Setti
     logger = logging.getLogger(__name__)
 
     try:
-        # Transform the product using Gemini service
-        gemini_service = GeminiService()
+        # Transform the product using injected Gemini service
         transformed = await gemini_service.transform_product_description(request.product)
 
         return TransformResponse(

@@ -126,6 +126,32 @@ FastAPI provides automatic interactive documentation:
 - **Swagger UI:** http://localhost:8000/docs
 - **ReDoc:** http://localhost:8000/redoc
 
+Test notes
+----------
+
+This project uses async pytest tests that run against an ASGI test client and a
+mock Gemini client. The test environment is detected via the `ENVIRONMENT`
+environment variable or by overriding `get_settings()` in tests. When
+`ENVIRONMENT` is set to `test` the application will use a mock GenAI client so
+no real API key or network calls are required.
+
+Quick commands:
+
+```bash
+# Install test dev dependencies (if not already installed)
+poetry add -D pytest pytest-asyncio httpx pytest-mock
+
+# Run the full test suite
+poetry run pytest -q
+```
+
+Notes:
+- Tests patch `app.config.get_settings()` in the test fixtures to return a
+  `Settings` instance with `environment='test'`, `query_token`, and
+  `header_token` values used by the router dependencies.
+- The mock GenAI client mirrors the minimal interface used by
+  `GeminiService` (async context manager with `.models.generate_content`).
+
 You can test all endpoints directly from these interfaces!
 
 ## Architecture

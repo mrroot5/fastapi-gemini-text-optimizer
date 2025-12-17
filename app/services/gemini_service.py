@@ -2,13 +2,14 @@
 
 import json
 import logging
-from typing import NoReturn
+from typing import Any, Callable, NoReturn, Optional
 
+from fastapi import Depends
 from google import genai
 from google.genai import errors
 from pydantic import BaseModel
 
-from app.config import get_settings
+from app.config import Settings, get_settings
 from app.schemas.product import ProductInput, ProductOutput
 
 
@@ -18,19 +19,32 @@ class GeminiResponse(BaseModel):
 
 
 class GeminiService:
-    """Service class for transforming product data using Gemini AI."""
+    """Service class for transforming product data using Gemini AI.
 
-    def __init__(self) -> None:
-        """Initialize the Gemini service with API configuration."""
-        self.settings = get_settings()
+    Accepts an optional `client_factory` for dependency injection. When a
+    `client_factory` is provided we will use it to create a genai-like client
+    (useful for tests). When no factory is provided and the environment is
+    not `test` we require a configured API key.
+    """
+
+    def __init__(self, client_factory: Optional[Callable[[], Any]] = None, settings: Optional[Settings] = None) -> None:
+        """Initialize the Gemini service with API configuration.
+
+        Args:
+            client_factory: Optional callable that returns a genai-like client
+            settings: Optional Settings instance (for testing injection)
+        """
+        self.settings = settings if settings is not None else get_settings()
         self.logger = logging.getLogger(__name__)
+        self._client_factory = client_factory
 
         self.logger.debug(
             "Initialized GeminiService with model=%s", self.settings.gemini_model)
 
-        if not self.settings.gemini_api_key:
-            raise ValueError(
-                "GEMINI_API_KEY is not set. Please configure it in your .env file.")
+        if not self._client_factory and self.settings.environment != "test":
+            if not self.settings.gemini_api_key:
+                raise ValueError(
+                    "GEMINI_API_KEY is not set. Please configure it in your .env file.")
 
     async def transform_product_description(self, product: ProductInput) -> ProductOutput:
         """
@@ -49,36 +63,40 @@ class GeminiService:
         prompt = self._build_transformation_prompt(product)
 
         try:
-            async with genai.Client(api_key=self.settings.gemini_api_key).aio as aclient:
-                response = await aclient.models.generate_content(
-                    model=self.settings.gemini_model,
-                    contents=prompt,
-                    config=genai.types.GenerateContentConfig(
-                        temperature=self.settings.gemini_temperature,
-                        max_output_tokens=self.settings.gemini_max_tokens,
-                        response_mime_type="application/json",
-                        response_schema=GeminiResponse
-                    ),
-                )
+            if self._client_factory:
+                async with self._client_factory().aio as aclient:
+                    response = await self._aclient_generate_content(
+                        aclient,
+                        prompt,
+                        self.settings.gemini_model,
+                        self.settings.gemini_temperature,
+                        self.settings.gemini_max_tokens,
+                    )
+            else:
+                async with genai.Client(api_key=self.settings.gemini_api_key).aio as aclient:
+                    response = await self._aclient_generate_content(
+                        aclient,
+                        prompt,
+                        self.settings.gemini_model,
+                        self.settings.gemini_temperature,
+                        self.settings.gemini_max_tokens,
+                    )
 
-                if response:
-                    self.logger.info("Gemini raw response: %s",
-                                     response.text)
+            if response:
+                self.logger.info("Gemini raw response: %s", response.text)
 
-                    if not response.text:
-                        candidate: genai.types.Candidate = getattr(
-                            response, "candidates", [])[0]
+                if not response.text:
+                    candidate: genai.types.Candidate = getattr(response, "candidates", [])[0]
 
-                        self.logger.error(
-                            "Gemini no text: %s", candidate.finish_reason)
+                    self.logger.error("Gemini no text: %s", candidate.finish_reason)
 
-                        raise ValueError("Empty response")
+                    raise ValueError("Empty response")
 
-                    transformed_data = json.loads(response.text)
+                transformed_data = json.loads(response.text)
 
-                    return ProductOutput(**transformed_data)
-                else:
-                    raise ValueError("No response")
+                return ProductOutput(**transformed_data)
+            else:
+                raise ValueError("No response")
 
         except json.JSONDecodeError as e:
             self.logger.error("Failed to parse response as JSON")
@@ -88,8 +106,31 @@ class GeminiService:
         except errors.APIError as e:
             self.logger.error(
                 "Gemini API error during content generation: %s", e)
-
             self._manage_gemini_api_errors(e)
+
+    async def _aclient_generate_content(
+        self,
+        aclient: Any,
+        prompt: str,
+        gemini_model: str,
+        gemini_temperature: float,
+        gemini_max_tokens: int,
+    ) -> genai.types.GenerateContentResponse | Any:
+        """Call the client's generate_content and return the response.
+
+        This abstracts the call so both real and mock clients share the same
+        invocation. It awaits and returns the response object.
+        """
+        return await aclient.models.generate_content(
+            model=gemini_model,
+            contents=prompt,
+            config=genai.types.GenerateContentConfig(
+                temperature=gemini_temperature,
+                max_output_tokens=gemini_max_tokens,
+                response_mime_type="application/json",
+                response_schema=GeminiResponse,
+            ),
+        )
 
     def _build_transformation_prompt(self, product: ProductInput) -> str:
         """
@@ -131,3 +172,18 @@ Respond with JSON only:"""
             raise ValueError(error.message)
 
         raise Exception(f"Gemini API error: {error}") from error
+
+
+def get_gemini_service(settings: Settings = Depends(get_settings)) -> GeminiService:
+    """FastAPI dependency to provide a configured GeminiService.
+
+    When `settings.environment == 'test'` we automatically use the mock
+    client factory so tests do not require a real API key or network calls.
+    """
+    if settings.environment == "test":
+        # Lazy import to avoid importing test helpers in production
+        from app.services.gemini_mock import mock_genai_client_factory
+
+        return GeminiService(client_factory=mock_genai_client_factory(), settings=settings)
+
+    return GeminiService(settings=settings)

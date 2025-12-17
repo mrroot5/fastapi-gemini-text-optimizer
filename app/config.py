@@ -25,6 +25,9 @@ class Settings(BaseSettings):
     # Logging
     log_level: str = ""
 
+    # Environment (development|test|production)
+    environment: str = "development"
+
     # Authentication Tokens
     query_token: str = ""
     header_token: str = ""
